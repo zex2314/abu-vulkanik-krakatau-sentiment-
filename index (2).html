@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apify Sentiment Analytics Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        positive: '#10b981',
+                        neutral: '#6b7280',
+                        negative: '#ef4444',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- Header Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-xl shadow-lg shadow-sky-500/20">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">
+                        Apify Sentiment Analytics
+                    </h1>
+                    <p class="text-xs text-slate-400">Dataset Live Intelligence & Sentiment Mining</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button id="btnSandbox" onclick="toggleSandboxModal()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+                    <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-sky-400"></i>
+                    <span>Uji Sentimen Live</span>
+                </button>
+                <button id="btnExportCSV" onclick="exportToCSV()" class="px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1.5 transition shadow-sm">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Ekspor CSV</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        <!-- API Connection Settings Card -->
+        <div class="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 backdrop-blur shadow-xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4 text-sky-400"></i>
+                        Sumber Data Apify Dataset
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">URL Dataset Apify yang sedang dikoneksikan ke dashboard</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="inline-flex items-center cursor-pointer text-xs text-slate-300">
+                        <input type="checkbox" id="useCorsProxy" class="sr-only peer" checked onchange="fetchApifyData()">
+                        <div class="relative w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
+                        <span class="ms-2 font-medium text-slate-300">Gunakan CORS Proxy</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-2">
+                <div class="relative flex-grow w-full">
+                    <i data-lucide="link" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="apifyUrlInput" 
+                        value="https://api.apify.com/v2/datasets/ZX13bmNymifccmhsI/items?token=apify_api_DxQu14TsBhrhxH5xlkehSTAHx4Pbp50ZeuQW" 
+                        class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 transition" 
+                        placeholder="Masukkan Endpoint Apify JSON items...">
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="fetchApifyData()" id="btnFetch" class="w-full sm:w-auto px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-md shadow-sky-600/20">
+                        <i data-lucide="refresh-cw" id="iconFetch" class="w-3.5 h-3.5"></i>
+                        <span>Muat Ulang Data</span>
+                    </button>
+                    <button onclick="loadSampleData()" class="w-full sm:w-auto px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium rounded-xl transition flex items-center justify-center gap-1.5" title="Gunakan Sampel Data jika offline">
+                        <i data-lucide="file-json" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Gunakan Sampel</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Banner -->
+            <div id="statusBanner" class="mt-3 hidden p-2.5 rounded-xl text-xs flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-slate-400"></div>
+                    <span id="statusText" class="font-medium text-slate-300">Menunggu data...</span>
+                </div>
+                <span id="statusTime" class="text-slate-400 text-[10px]"></span>
+            </div>
+        </div>
+
+        <!-- KPI Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 lg:gap-4">
+            <!-- Total Data -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-600 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400">Total Post / Text</span>
+                    <div class="p-1.5 bg-slate-700/50 rounded-lg text-slate-300">
+                        <i data-lucide="layers" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span id="kpiTotal" class="text-2xl font-bold text-white">0</span>
+                    <span class="text-[10px] text-slate-400 block mt-0.5">Item teranalisis</span>
+                </div>
+            </div>
+
+            <!-- Positive -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between hover:border-emerald-500/40 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-emerald-400">Sentimen Positif</span>
+                    <div class="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400">
+                        <i data-lucide="smile" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span id="kpiPosCount" class="text-2xl font-bold text-emerald-400">0</span>
+                    <span id="kpiPosRatio" class="text-[10px] text-emerald-500/80 block mt-0.5">0% dari total</span>
+                </div>
+            </div>
+
+            <!-- Neutral -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-500/40 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-300">Sentimen Netral</span>
+                    <div class="p-1.5 bg-slate-700/60 rounded-lg text-slate-300">
+                        <i data-lucide="meh" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span id="kpiNeuCount" class="text-2xl font-bold text-slate-300">0</span>
+                    <span id="kpiNeuRatio" class="text-[10px] text-slate-400 block mt-0.5">0% dari total</span>
+                </div>
+            </div>
+
+            <!-- Negative -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between hover:border-rose-500/40 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-rose-400">Sentimen Negatif</span>
+                    <div class="p-1.5 bg-rose-500/10 rounded-lg text-rose-400">
+                        <i data-lucide="frown" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span id="kpiNegCount" class="text-2xl font-bold text-rose-400">0</span>
+                    <span id="kpiNegRatio" class="text-[10px] text-rose-500/80 block mt-0.5">0% dari total</span>
+                </div>
+            </div>
+
+            <!-- Avg Score Index -->
+            <div class="col-span-2 md:col-span-1 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 flex flex-col justify-between hover:border-sky-500/40 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-sky-400">Indeks Skor Rata-rata</span>
+                    <div class="p-1.5 bg-sky-500/10 rounded-lg text-sky-400">
+                        <i data-lucide="activity" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span id="kpiAvgScore" class="text-2xl font-bold text-sky-300">0.00</span>
+                    <span id="kpiAvgLabel" class="text-[10px] text-sky-400/80 block mt-0.5">Skor (-1.0 s/d +1.0)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Analytics Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sentiment Distribution Chart -->
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center justify-between">
+                        <span>Distribusi Sentimen</span>
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-slate-400"></i>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">Proporsi Positif, Netral, dan Negatif</p>
+                </div>
+                <div class="relative my-4 flex items-center justify-center h-52">
+                    <canvas id="chartDonut"></canvas>
+                </div>
+                <div id="sentimentSummaryNote" class="text-xs text-center text-slate-400 border-t border-slate-700/50 pt-3">
+                    Menunggu pengolahan data...
+                </div>
+            </div>
+
+            <!-- Word Frequency / Top Keywords Chart -->
+            <div class="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center justify-between">
+                        <span>Kata Kunci & Topik Populer</span>
+                        <i data-lucide="hash" class="w-4 h-4 text-sky-400"></i>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">Frekuensi kata terbanyak yang terdeteksi dari dataset</p>
+                </div>
+                <div class="relative my-4 h-52">
+                    <canvas id="chartKeywords"></canvas>
+                </div>
+                <div class="flex items-center justify-between text-xs text-slate-400 border-t border-slate-700/50 pt-3">
+                    <span>Top 8 Kata Kunci Utama</span>
+                    <span class="text-sky-400 text-[11px]">*Stopwords ID & EN telah difilter</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Explorer Card -->
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
+            <!-- Table Controls -->
+            <div class="p-4 sm:p-5 border-b border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <h3 class="text-sm font-semibold text-slate-200">Eksplorasi Data</h3>
+                    <span id="badgeFilteredCount" class="bg-sky-500/20 text-sky-300 text-xs px-2 py-0.5 rounded-full font-mono">0 item</span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <!-- Filter Sentiment -->
+                    <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1 w-full sm:w-auto text-xs">
+                        <button onclick="setSentimentFilter('ALL')" id="filterBtnALL" class="filter-tab px-3 py-1 rounded-lg font-medium transition bg-sky-600 text-white">Semua</button>
+                        <button onclick="setSentimentFilter('POSITIVE')" id="filterBtnPOSITIVE" class="filter-tab px-3 py-1 rounded-lg font-medium transition text-slate-400 hover:text-white">Positif</button>
+                        <button onclick="setSentimentFilter('NEUTRAL')" id="filterBtnNEUTRAL" class="filter-tab px-3 py-1 rounded-lg font-medium transition text-slate-400 hover:text-white">Netral</button>
+                        <button onclick="setSentimentFilter('NEGATIVE')" id="filterBtnNEGATIVE" class="filter-tab px-3 py-1 rounded-lg font-medium transition text-slate-400 hover:text-white">Negatif</button>
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="relative w-full sm:w-64">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Cari dalam postingan..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Elements -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-900/60 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-700/50">
+                        <tr>
+                            <th class="py-3 px-4 w-12 text-center">#</th>
+                            <th class="py-3 px-4">Isi Konten / Teks</th>
+                            <th class="py-3 px-4 w-32">Sentimen</th>
+                            <th class="py-3 px-4 w-28 text-center">Skor Polaritas</th>
+                            <th class="py-3 px-4 w-24 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-700/40">
+                        <!-- Rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination & Info Footer -->
+            <div class="p-4 border-t border-slate-700/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+                <div id="paginationInfo">
+                    Menampilkan 0 dari 0 data
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="btnPrevPage" onclick="changePage(-1)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition">
+                        Sebelumnya
+                    </button>
+                    <span id="pageIndicator" class="font-mono text-slate-200 px-2">Hal 1</span>
+                    <button id="btnNextPage" onclick="changePage(1)" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition">
+                        Selanjutnya
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Item Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-slate-100 flex items-center gap-2 text-sm">
+                    <i data-lucide="file-text" class="w-4 h-4 text-sky-400"></i>
+                    Detail Analisis Teks
+                </h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto space-y-4 text-xs">
+                <!-- Sentiment Badge Card -->
+                <div id="modalSentimentCard" class="p-4 rounded-xl border flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Klasifikasi Sentimen</span>
+                        <div id="modalSentimentLabel" class="text-lg font-bold mt-0.5">POSITIF</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400 uppercase font-semibold">Skor Compound</span>
+                        <div id="modalSentimentScore" class="text-lg font-mono font-bold mt-0.5">+0.75</div>
+                    </div>
+                </div>
+
+                <!-- Text Highlight Section -->
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Teks Lengkap & Deteksi Kata:</label>
+                    <div id="modalTextBody" class="p-3 bg-slate-950 border border-slate-800 rounded-xl leading-relaxed text-slate-200 font-sans text-sm break-words whitespace-pre-wrap">
+                        --
+                    </div>
+                </div>
+
+                <!-- Detected Keywords Breakdown -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-xl">
+                        <div class="text-emerald-400 font-semibold mb-1 flex items-center gap-1">
+                            <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
+                            <span>Kata Positif Terdeteksi</span>
+                        </div>
+                        <div id="modalPosWords" class="flex flex-wrap gap-1 mt-2">
+                            <span class="text-slate-500 italic">Tidak ada</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-rose-950/30 border border-rose-800/40 rounded-xl">
+                        <div class="text-rose-400 font-semibold mb-1 flex items-center gap-1">
+                            <i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i>
+                            <span>Kata Negatif Terdeteksi</span>
+                        </div>
+                        <div id="modalNegWords" class="flex flex-wrap gap-1 mt-2">
+                            <span class="text-slate-500 italic">Tidak ada</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw JSON Accordion -->
+                <div class="border-t border-slate-800 pt-3">
+                    <details class="group">
+                        <summary class="cursor-pointer font-medium text-slate-400 hover:text-slate-200 flex items-center justify-between">
+                            <span>Lihat Raw JSON Item dari Apify</span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition group-open:rotate-180"></i>
+                        </summary>
+                        <pre id="modalRawJson" class="mt-2 p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] font-mono text-slate-300 overflow-x-auto max-h-48"></pre>
+                    </details>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                <button onclick="closeDetailModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Sandbox Modal -->
+    <div id="sandboxModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-slate-100 flex items-center gap-2 text-sm">
+                    <i data-lucide="flask-conical" class="w-4 h-4 text-sky-400"></i>
+                    Uji Sentimen Teks Live (Sandbox)
+                </h3>
+                <button onclick="toggleSandboxModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1.5">Ketik Teks atau Opini (Bahasa Indonesia / Inggris):</label>
+                    <textarea id="sandboxInput" rows="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-sky-500 transition" placeholder="Contoh: Pelayanan aplikasi ini sangat bagus dan cepat, tapi sayang harganya lumayan mahal..."></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button onclick="analyzeSandboxText()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium rounded-xl flex items-center gap-1.5 transition">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Analisis Sekarang</span>
+                    </button>
+                </div>
+
+                <!-- Sandbox Output -->
+                <div id="sandboxOutput" class="hidden border-t border-slate-800 pt-4 space-y-3">
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold">Hasil Klasifikasi</span>
+                            <div id="sandboxLabel" class="text-base font-bold mt-0.5">--</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold">Skor Compound</span>
+                            <div id="sandboxScore" class="text-base font-mono font-bold mt-0.5">0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-800/30">
+                            <span class="text-emerald-400 font-semibold block">Positif:</span>
+                            <span id="sandboxPosList" class="text-slate-300 italic">None</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-rose-950/20 border border-rose-800/30">
+                            <span class="text-rose-400 font-semibold block">Negatif:</span>
+                            <span id="sandboxNegList" class="text-slate-300 italic">None</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* Sentiment Lexicon Dictionaries (Bilingual: ID & EN) */
+        const LEXICON_POSITIVE = new Set([
+            // Indonesian
+            'bagus', 'mantap', 'keren', 'suka', 'puas', 'terbaik', 'hebat', 'cinta', 'juara', 
+            'rekomendasi', 'mantul', 'ramah', 'cepat', 'murah', 'mudah', 'nyaman', 'aman', 
+            'lengkap', 'bersih', 'responsif', 'membantu', 'bonus', 'diskon', 'mulus', 'bermanfaat',
+            'top', 'jos', 'ok', 'oke', 'istimewa', 'senang', 'bahagia', 'sangat bagus', 'terpercaya',
+            // English
+            'good', 'great', 'awesome', 'excellent', 'love', 'like', 'best', 'happy', 'amazing',
+            'wonderful', 'perfect', 'fantastic', 'fast', 'easy', 'helpful', 'clean', 'nice',
+            'recommend', 'safe', 'smooth', 'valuable', 'satisfying', 'brilliant', 'superb'
+        ]);
+
+        const LEXICON_NEGATIVE = new Set([
+            // Indonesian
+            'jelek', 'buruk', 'kecewa', 'parah', 'benci', 'rugi', 'lambat', 'lemot', 'mahal',
+            'rusak', 'scam', 'penipuan', 'bohong', 'susah', 'sulit', 'ribet', 'kesal', 'marah',
+            'error', 'bug', 'gagal', 'kasar', 'kurang', 'kapok', 'parah banget', 'nyesel',
+            'menyesal', 'ancur', 'hancur', 'lamban', 'jelek banget', 'ribet banget', 'zonk',
+            // English
+            'bad', 'terrible', 'worst', 'hate', 'disappointed', 'slow', 'expensive', 'broken',
+            'scam', 'fake', 'hard', 'difficult', 'annoying', 'angry', 'error', 'fail', 'failed',
+            'poor', 'useless', 'horrible', 'awful', 'waste', 'ugly', 'crash'
+        ]);
+
+        const STOPWORDS = new Set([
+            'yang', 'dan', 'di', 'ke', 'dari', 'ini', 'itu', 'dengan', 'untuk', 'pada', 'adalah',
+            'sebagai', 'akan', 'bisa', 'ada', 'tidak', 'juga', 'sudah', 'saya', 'kamu', 'mereka',
+            'kita', 'kami', 'atau', 'karena', 'jadi', 'nya', 'saja', 'lagi', 'oleh', 'tahun',
+            'the', 'is', 'at', 'which', 'on', 'and', 'a', 'an', 'to', 'in', 'for', 'it', 'of', 'or', 'be', 'as', 'this', 'that', 'with', 'by'
+        ]);
+
+        // App Global State
+        let rawDataset = [];
+        let processedDataset = [];
+        let filteredDataset = [];
+        let currentFilter = 'ALL';
+        let searchQuery = '';
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        let donutChartInstance = null;
+        let keywordChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            fetchApifyData();
+        });
+
+        async function fetchApifyData() {
+            const rawUrl = document.getElementById('apifyUrlInput').value.trim();
+            const useProxy = document.getElementById('useCorsProxy').checked;
+
+            if (!rawUrl) {
+                showStatus('Mohon masukkan URL Apify dataset yang valid', 'error');
+                return;
+            }
+
+            let fetchUrl = rawUrl;
+            if (useProxy) {
+                fetchUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
+            }
+
+            setLoadingState(true);
+            showStatus('Mengambil data dari Apify API...', 'loading');
+
+            try {
+                const response = await fetch(fetchUrl, { method: 'GET' });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (!Array.isArray(data)) {
+                    throw new Error('Format data tidak sesuai (diharapkan array dari item Apify)');
+                }
+
+                rawDataset = data;
+                processDataset(rawDataset);
+                showStatus(`Berhasil memuat ${rawDataset.length} item dari Apify!`, 'success');
+
+            } catch (err) {
+                console.warn('Fetch error:', err);
+                
+                // Retry attempt without proxy if proxy was enabled, or vice versa
+                if (useProxy) {
+                    showStatus('Kendala proxy, mencoba fetching langsung...', 'warning');
+                    try {
+                        const directRes = await fetch(rawUrl);
+                        if (directRes.ok) {
+                            const directData = await directRes.json();
+                            if (Array.isArray(directData)) {
+                                rawDataset = directData;
+                                processDataset(rawDataset);
+                                showStatus(`Berhasil memuat ${rawDataset.length} item langsung!`, 'success');
+                                setLoadingState(false);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Direct fetch retry failed:', e);
+                    }
+                }
+
+                showStatus(`Gagal mengambil data: ${err.message}. Memuat sampel dataset fallback.`, 'error');
+                loadSampleData();
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function loadSampleData() {
+            // High quality fallback dataset simulating scraped social reviews/tweets
+            rawDataset = [
+                { id: 1, text: "Aplikasi ini luar biasa mantap dan respon customer servicenya sangat cepat serta friendly! Sangat puas.", author: "user_a", createdAt: "2026-10-01" },
+                { id: 2, text: "Sistem sering error saat checkout dan koneksinya lemot sekali. Sangat mengecewakan dan bikin kesal.", author: "user_b", createdAt: "2026-10-02" },
+                { id: 3, text: "Produk sudah diterima sesuai deskripsi, kualitas biasa saja standar sesuai harga.", author: "user_c", createdAt: "2026-10-02" },
+                { id: 4, text: "Layanan hebat, sangat direkomendasikan untuk semua orang yang butuh solusi instan!", author: "user_d", createdAt: "2026-10-03" },
+                { id: 5, text: "Penipuan kapok belanja disini, barang rusak dan tidak bisa di retur. Parah sekali!", author: "user_e", createdAt: "2026-10-04" },
+                { id: 6, text: "Harga murah, pengiriman super cepat, mulus tidak ada kendala sama sekali. Best service!", author: "user_f", createdAt: "2026-10-05" },
+                { id: 7, text: "Fitur cukup lengkap tapi tampilannya agak sedikit bingung buat pengguna baru.", author: "user_g", createdAt: "2026-10-05" },
+                { id: 8, text: "Great experience! The platform is smooth, fast, and very reliable. Love it!", author: "user_h", createdAt: "2026-10-06" },
+                { id: 9, text: "Terrible updates, the app keeps crashing on my device. Waste of time and money.", author: "user_i", createdAt: "2026-10-07" },
+                { id: 10, text: "Bagus dan amanah, paket rapi dengan bubble wrap tebal. Terima kasih seller!", author: "user_j", createdAt: "2026-10-08" },
+                { id: 11, text: "Proses administrasi agak lambat, mohon ditingkatkan lagi performa sistemnya.", author: "user_k", createdAt: "2026-10-08" },
+                { id: 12, text: "Juara banget, rekomendasi utama untuk kebutuhan harian! Sukses terus.", author: "user_l", createdAt: "2026-10-09" }
+            ];
+
+            processDataset(rawDataset);
+            showStatus(`Menggunakan Sampel Dataset Fallback (${rawDataset.length} item)`, 'warning');
+        }
+
+        /* Core Sentiment Analyzer Function */
+        function analyzeText(text) {
+            if (!text || typeof text !== 'string') {
+                return {
+                    score: 0,
+                    sentiment: 'NEUTRAL',
+                    posWords: [],
+                    negWords: [],
+                    wordsCount: 0
+                };
+            }
+
+            // Clean text
+            const cleanStr = text.toLowerCase()
+                .replace(/https?:\/\/\S+/g, '') // remove URLs
+                .replace(/[^a-zA-Z0-9-áéíóúâêîôûàèìòùçãõñ\s]/g, ' ') // keep alphanumeric
+                .replace(/\s+/g, ' ');
+
+            const words = cleanStr.split(' ').filter(w => w.length > 1);
+
+            let posCount = 0;
+            let negCount = 0;
+            const posWords = [];
+            const negWords = [];
+
+            words.forEach(word => {
+                if (LEXICON_POSITIVE.has(word)) {
+                    posCount++;
+                    posWords.push(word);
+                } else if (LEXICON_NEGATIVE.has(word)) {
+                    negCount++;
+                    negWords.push(word);
+                }
+            });
+
+            const totalLexHits = posCount + negCount;
+            let score = 0;
+
+            if (totalLexHits > 0) {
+                score = (posCount - negCount) / Math.max(1, totalLexHits);
+            }
+
+            let sentiment = 'NEUTRAL';
+            if (score >= 0.15) {
+                sentiment = 'POSITIVE';
+            } else if (score <= -0.15) {
+                sentiment = 'NEGATIVE';
+            }
+
+            return {
+                score: parseFloat(score.toFixed(2)),
+                sentiment: sentiment,
+                posWords: [...new Set(posWords)],
+                negWords: [...new Set(negWords)],
+                wordsCount: words.length
+            };
+        }
+
+        /* Extract text field dynamically from flexible Apify dataset schemas */
+        function extractTextField(item) {
+            if (!item) return '';
+            if (typeof item === 'string') return item;
+            
+            // Common JSON keys used in Apify scrapers (Twitter, IG, YouTube, Google Maps, Reviews, etc.)
+            const candidates = [
+                item.text, item.fullText, item.caption, item.comment, item.title,
+                item.snippet, item.content, item.reviewText, item.description, item.message
+            ];
+
+            for (const val of candidates) {
+                if (val && typeof val === 'string' && val.trim().length > 0) {
+                    return val.trim();
+                }
+            }
+
+            // Fallback: concatenate top string properties
+            return Object.values(item)
+                .filter(v => typeof v === 'string' && v.length > 10)
+                .join(' ') || JSON.stringify(item);
+        }
+
+        /* Process Raw Dataset into Analyzed Format */
+        function processDataset(data) {
+            processedDataset = data.map((raw, idx) => {
+                const textContent = extractTextField(raw);
+                const analysis = analyzeText(textContent);
+                return {
+                    id: idx + 1,
+                    text: textContent,
+                    sentiment: analysis.sentiment,
+                    score: analysis.score,
+                    posWords: analysis.posWords,
+                    negWords: analysis.negWords,
+                    raw: raw
+                };
+            });
+
+            applyFiltersAndRender();
+        }
+
+        /* Filter, Search & Render Pipeline */
+        function applyFiltersAndRender() {
+            filteredDataset = processedDataset.filter(item => {
+                // Sentiment Filter
+                if (currentFilter !== 'ALL' && item.sentiment !== currentFilter) {
+                    return false;
+                }
+                // Search Query
+                if (searchQuery) {
+                    return item.text.toLowerCase().includes(searchQuery.toLowerCase());
+                }
+                return true;
+            });
+
+            currentPage = 1;
+            updateKPIs();
+            renderCharts();
+            renderTable();
+        }
+
+        function updateKPIs() {
+            const total = processedDataset.length;
+            const posCount = processedDataset.filter(d => d.sentiment === 'POSITIVE').length;
+            const neuCount = processedDataset.filter(d => d.sentiment === 'NEUTRAL').length;
+            const negCount = processedDataset.filter(d => d.sentiment === 'NEGATIVE').length;
+
+            const avgScore = total > 0 
+                ? (processedDataset.reduce((acc, curr) => acc + curr.score, 0) / total).toFixed(2)
+                : '0.00';
+
+            document.getElementById('kpiTotal').innerText = total.toLocaleString();
+            document.getElementById('kpiPosCount').innerText = posCount.toLocaleString();
+            document.getElementById('kpiNeuCount').innerText = neuCount.toLocaleString();
+            document.getElementById('kpiNegCount').innerText = negCount.toLocaleString();
+
+            const posRatio = total > 0 ? ((posCount / total) * 100).toFixed(1) : 0;
+            const neuRatio = total > 0 ? ((neuCount / total) * 100).toFixed(1) : 0;
+            const negRatio = total > 0 ? ((negCount / total) * 100).toFixed(1) : 0;
+
+            document.getElementById('kpiPosRatio').innerText = `${posRatio}% dari total`;
+            document.getElementById('kpiNeuRatio').innerText = `${neuRatio}% dari total`;
+            document.getElementById('kpiNegRatio').innerText = `${negRatio}% dari total`;
+
+            document.getElementById('kpiAvgScore').innerText = (avgScore > 0 ? `+${avgScore}` : avgScore);
+            
+            let label = 'Dominan Netral';
+            if (avgScore > 0.15) label = 'Dominan Positif 😃';
+            else if (avgScore < -0.15) label = 'Dominan Negatif 🙁';
+            document.getElementById('kpiAvgLabel').innerText = label;
+
+            document.getElementById('badgeFilteredCount').innerText = `${filteredDataset.length} item terfilter`;
+            
+            document.getElementById('sentimentSummaryNote').innerHTML = 
+                `Opini Publik: <span class="font-semibold text-slate-200">${posRatio}% Positif</span> vs <span class="font-semibold text-slate-200">${negRatio}% Negatif</span>`;
+        }
+
+        function renderCharts() {
+            // 1. Donut Chart (Sentiment Split)
+            const posCount = processedDataset.filter(d => d.sentiment === 'POSITIVE').length;
+            const neuCount = processedDataset.filter(d => d.sentiment === 'NEUTRAL').length;
+            const negCount = processedDataset.filter(d => d.sentiment === 'NEGATIVE').length;
+
+            const donutCtx = document.getElementById('chartDonut').getContext('2d');
+            if (donutChartInstance) donutChartInstance.destroy();
+
+            donutChartInstance = new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positif', 'Netral', 'Negatif'],
+                    datasets: [{
+                        data: [posCount, neuCount, negCount],
+                        backgroundColor: ['#10b981', '#6b7280', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: '#1e293b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 15 }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // 2. Horizontal Bar Chart (Top Keywords)
+            const freqMap = {};
+            processedDataset.forEach(item => {
+                const words = item.text.toLowerCase()
+                    .replace(/[^a-zA-Z0-9-áéíóúâêîôûàèìòùçãõñ\s]/g, '')
+                    .split(/\s+/)
+                    .filter(w => w.length > 2 && !STOPWORDS.has(w));
+
+                words.forEach(w => {
+                    freqMap[w] = (freqMap[w] || 0) + 1;
+                });
+            });
+
+            const sortedKeywords = Object.entries(freqMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            const kwLabels = sortedKeywords.map(k => k[0]);
+            const kwValues = sortedKeywords.map(k => k[1]);
+
+            const kwCtx = document.getElementById('chartKeywords').getContext('2d');
+            if (keywordChartInstance) keywordChartInstance.destroy();
+
+            keywordChartInstance = new Chart(kwCtx, {
+                type: 'bar',
+                data: {
+                    labels: kwLabels.length > 0 ? kwLabels : ['Belum ada data'],
+                    datasets: [{
+                        label: 'Frekuensi Kata',
+                        data: kwValues.length > 0 ? kwValues : [0],
+                        backgroundColor: '#0284c7',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', font: { family: 'Inter', size: 10 } },
+                            grid: { color: '#334155' }
+                        },
+                        y: {
+                            ticks: { color: '#cbd5e1', font: { family: 'Inter', size: 11 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (filteredDataset.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-500 italic">
+                            Tidak ada data yang cocok dengan kriteria pencarian/filter.
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('paginationInfo').innerText = `Menampilkan 0 data`;
+                document.getElementById('btnPrevPage').disabled = true;
+                document.getElementById('btnNextPage').disabled = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(filteredDataset.length / itemsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredDataset.length);
+            const pageData = filteredDataset.slice(startIndex, endIndex);
+
+            pageData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition group cursor-pointer";
+                tr.onclick = () => openDetailModal(item);
+
+                // Sentiment Badge styling
+                let badgeClass = "bg-slate-700/60 text-slate-300 border-slate-600";
+                let badgeIcon = "meh";
+                if (item.sentiment === 'POSITIVE') {
+                    badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+                    badgeIcon = "smile";
+                } else if (item.sentiment === 'NEGATIVE') {
+                    badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/30";
+                    badgeIcon = "frown";
+                }
+
+                // Score bar indicator
+                const rawScorePct = Math.min(100, Math.max(0, (item.score + 1) * 50));
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-center font-mono text-slate-500">${startIndex + index + 1}</td>
+                    <td class="py-3 px-4">
+                        <p class="line-clamp-2 text-slate-200 text-xs font-sans leading-relaxed">
+                            ${escapeHtml(item.text)}
+                        </p>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border ${badgeClass}">
+                            <i data-lucide="${badgeIcon}" class="w-3 h-3"></i>
+                            ${item.sentiment}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="font-mono text-xs font-semibold ${item.score > 0 ? 'text-emerald-400' : (item.score < 0 ? 'text-rose-400' : 'text-slate-400')}">
+                            ${item.score > 0 ? '+' : ''}${item.score}
+                        </span>
+                        <div class="w-16 h-1.5 bg-slate-700 rounded-full mx-auto mt-1 overflow-hidden">
+                            <div class="h-full ${item.score > 0 ? 'bg-emerald-500' : (item.score < 0 ? 'bg-rose-500' : 'bg-slate-500')}" style="width: ${rawScorePct}%"></div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <button class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md text-[11px] font-medium border border-slate-700 transition" onclick="event.stopPropagation(); openDetailModal(processedDataset[${item.id - 1}])">
+                            Detail
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+
+            // Update Pagination UI
+            document.getElementById('paginationInfo').innerText = `Menampilkan ${startIndex + 1} - ${endIndex} dari ${filteredDataset.length} data`;
+            document.getElementById('pageIndicator').innerText = `Hal ${currentPage} dari ${totalPages}`;
+            document.getElementById('btnPrevPage').disabled = (currentPage === 1);
+            document.getElementById('btnNextPage').disabled = (currentPage === totalPages);
+        }
+
+        function setSentimentFilter(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.className = "filter-tab px-3 py-1 rounded-lg font-medium transition text-slate-400 hover:text-white";
+            });
+            const activeBtn = document.getElementById(`filterBtn${type}`);
+            if (activeBtn) {
+                activeBtn.className = "filter-tab px-3 py-1 rounded-lg font-medium transition bg-sky-600 text-white shadow-sm";
+            }
+            applyFiltersAndRender();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.trim();
+            applyFiltersAndRender();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            renderTable();
+        }
+
+        /* Modal Handlers */
+        function openDetailModal(item) {
+            const modal = document.getElementById('detailModal');
+            
+            const card = document.getElementById('modalSentimentCard');
+            const label = document.getElementById('modalSentimentLabel');
+            const score = document.getElementById('modalSentimentScore');
+
+            label.innerText = item.sentiment;
+            score.innerText = (item.score > 0 ? `+${item.score}` : item.score);
+
+            if (item.sentiment === 'POSITIVE') {
+                card.className = "p-4 rounded-xl border flex items-center justify-between bg-emerald-950/40 border-emerald-800/60 text-emerald-300";
+            } else if (item.sentiment === 'NEGATIVE') {
+                card.className = "p-4 rounded-xl border flex items-center justify-between bg-rose-950/40 border-rose-800/60 text-rose-300";
+            } else {
+                card.className = "p-4 rounded-xl border flex items-center justify-between bg-slate-800/60 border-slate-700 text-slate-300";
+            }
+
+            document.getElementById('modalTextBody').innerText = item.text;
+
+            // Render Pos / Neg words tags
+            const posContainer = document.getElementById('modalPosWords');
+            const negContainer = document.getElementById('modalNegWords');
+
+            posContainer.innerHTML = item.posWords.length > 0
+                ? item.posWords.map(w => `<span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded font-mono text-[10px] border border-emerald-500/30">${w}</span>`).join(' ')
+                : `<span class="text-slate-500 italic">Tidak ada</span>`;
+
+            negContainer.innerHTML = item.negWords.length > 0
+                ? item.negWords.map(w => `<span class="px-2 py-0.5 bg-rose-500/20 text-rose-300 rounded font-mono text-[10px] border border-rose-500/30">${w}</span>`).join(' ')
+                : `<span class="text-slate-500 italic">Tidak ada</span>`;
+
+            document.getElementById('modalRawJson').innerText = JSON.stringify(item.raw, null, 2);
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        /* Sandbox Modal Handlers */
+        function toggleSandboxModal() {
+            const modal = document.getElementById('sandboxModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function analyzeSandboxText() {
+            const text = document.getElementById('sandboxInput').value.trim();
+            if (!text) return;
+
+            const res = analyzeText(text);
+            const outputBox = document.getElementById('sandboxOutput');
+            const label = document.getElementById('sandboxLabel');
+            const score = document.getElementById('sandboxScore');
+
+            label.innerText = res.sentiment;
+            score.innerText = (res.score > 0 ? `+${res.score}` : res.score);
+
+            if (res.sentiment === 'POSITIVE') {
+                label.className = "text-base font-bold mt-0.5 text-emerald-400";
+            } else if (res.sentiment === 'NEGATIVE') {
+                label.className = "text-base font-bold mt-0.5 text-rose-400";
+            } else {
+                label.className = "text-base font-bold mt-0.5 text-slate-300";
+            }
+
+            document.getElementById('sandboxPosList').innerText = res.posWords.length > 0 ? res.posWords.join(', ') : 'Tidak ada';
+            document.getElementById('sandboxNegList').innerText = res.negWords.length > 0 ? res.negWords.join(', ') : 'Tidak ada';
+
+            outputBox.classList.remove('hidden');
+        }
+
+        /* Status & UI Helpers */
+        function showStatus(message, type = 'info') {
+            const banner = document.getElementById('statusBanner');
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const time = document.getElementById('statusTime');
+
+            banner.classList.remove('hidden', 'bg-emerald-950/60', 'border-emerald-800', 'bg-rose-950/60', 'border-rose-800', 'bg-amber-950/60', 'border-amber-800', 'bg-slate-800/80', 'border-slate-700');
+
+            if (type === 'success') {
+                banner.classList.add('bg-emerald-950/60', 'border', 'border-emerald-800');
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+            } else if (type === 'error') {
+                banner.classList.add('bg-rose-950/60', 'border', 'border-rose-800');
+                dot.className = "w-2 h-2 rounded-full bg-rose-400";
+            } else if (type === 'warning') {
+                banner.classList.add('bg-amber-950/60', 'border', 'border-amber-800');
+                dot.className = "w-2 h-2 rounded-full bg-amber-400";
+            } else {
+                banner.classList.add('bg-slate-800/80', 'border', 'border-slate-700');
+                dot.className = "w-2 h-2 rounded-full bg-sky-400 animate-ping";
+            }
+
+            text.innerText = message;
+            time.innerText = new Date().toLocaleTimeString('id-ID');
+        }
+
+        function setLoadingState(isLoading) {
+            const btn = document.getElementById('btnFetch');
+            const icon = document.getElementById('iconFetch');
+
+            if (isLoading) {
+                btn.disabled = true;
+                icon.classList.add('animate-spin');
+            } else {
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+            }
+        }
+
+        /* CSV Export */
+        function exportToCSV() {
+            if (processedDataset.length === 0) {
+                showStatus('Tidak ada data yang dapat diekspor', 'warning');
+                return;
+            }
+
+            const headers = ['ID', 'Sentimen', 'Skor Polaritas', 'Kata Positif', 'Kata Negatif', 'Teks Konten'];
+            const rows = processedDataset.map(item => [
+                item.id,
+                item.sentiment,
+                item.score,
+                `"${item.posWords.join('; ')}"`,
+                `"${item.negWords.join('; ')}"`,
+                `"${item.text.replace(/"/g, '""')}"`
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + [headers.join(','), ...rows.map(e => e.join(','))].join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Apify_Sentiment_Analysis_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
